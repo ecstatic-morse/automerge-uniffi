@@ -7,6 +7,7 @@ use crate::{
     obj_id::ObjId,
     path::{PathElement, Prop},
     value::Value,
+    scalar_value::ScalarValue,
 };
 mod observer;
 pub(crate) use observer::Observer;
@@ -46,6 +47,19 @@ pub enum PatchAction {
         obj: ObjId,
         index: u64,
         length: u64,
+    },
+    Mark {
+        obj: ObjId,
+        name: String,
+        start: u64,
+        end: u64,
+        value: ScalarValue,
+    },
+    Unmark {
+        obj: ObjId,
+        name: String,
+        start: u64,
+        end: u64,
     },
 }
 
@@ -140,6 +154,30 @@ impl From<ObserverPatch> for Patch {
                     obj: obj.into(),
                     index: index as u64,
                     length: length as u64,
+                },
+            },
+            ObserverPatch::Mark { obj, path, mark } => Patch {
+                path: convert_path(path),
+                action: PatchAction::Mark {
+                    obj: obj.into(),
+                    name: mark.name().to_owned(),
+                    start: mark.start.try_into().unwrap(),
+                    end: mark.end.try_into().unwrap(),
+                    value: mark.value().into(),
+                },
+            },
+            ObserverPatch::Unmark {
+                obj,
+                path,
+                name,
+                range,
+            } => Patch {
+                path: convert_path(path),
+                action: PatchAction::Unmark {
+                    obj: obj.into(),
+                    name,
+                    start: range.start.try_into().unwrap(),
+                    end: range.end.try_into().unwrap(),
                 },
             },
         }

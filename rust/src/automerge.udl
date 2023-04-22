@@ -99,6 +99,8 @@ interface PatchAction {
     Increment( ObjId obj, Prop prop, i64 value);
     DeleteMap( ObjId obj, string key);
     DeleteSeq( ObjId obj, u64 index, u64 length);
+    Mark(ObjId obj, string name, u64 start, u64 end, ScalarValue value);
+    Unmark(ObjId obj, string name, u64 start, u64 end);
 };
 
 interface Doc {

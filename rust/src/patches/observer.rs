@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use super::SequenceTree;
 use automerge as am;
 use automerge::ReadDoc;
@@ -83,6 +85,17 @@ pub(crate) enum Patch {
         index: usize,
         length: usize,
     },
+    Mark {
+        obj: am::ObjId,
+        path: Vec<(am::ObjId, am::Prop)>,
+        mark: am::marks::Mark<'static>,
+    },
+    Unmark {
+        obj: am::ObjId,
+        path: Vec<(am::ObjId, am::Prop)>,
+        name: String,
+        range: Range<usize>,
+    },
 }
 
 impl am::OpObserver for Observer {
@@ -92,6 +105,7 @@ impl am::OpObserver for Observer {
         obj: am::ObjId,
         index: usize,
         tagged_value: (am::Value<'_>, am::ObjId),
+        _conflict: bool,
     ) {
         if self.enabled {
             let value = (tagged_value.0.to_owned(), tagged_value.1);
@@ -313,6 +327,27 @@ impl am::OpObserver for Observer {
 
     fn text_as_seq(&self) -> bool {
         false
+    }
+
+    fn mark<'a, R: ReadDoc, M: Iterator<Item = am::marks::Mark<'a>>>(
+        &mut self,
+        doc: &'a R,
+        obj: am::ObjId,
+        mark: M,
+    ) {
+        if self.enabled {
+            if let Some(path) = self.get_path(doc, &obj) {
+                self.patches.extend(mark.map(|m| Patch::Mark { obj: obj.clone(), path: path.clone(), mark: m.into_owned() }))
+            }
+        }
+    }
+
+    fn unmark<R: ReadDoc>(&mut self, doc: &R, obj: am::ObjId, name: &str, start: usize, end: usize) {
+        if self.enabled {
+            if let Some(path) = self.get_path(doc, &obj) {
+                self.patches.push(Patch::Unmark { obj: obj.clone(), path, name: name.to_owned(), range: start..end })
+            }
+        }
     }
 }
 
